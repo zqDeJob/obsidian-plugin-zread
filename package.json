@@ -1,0 +1,29 @@
+{
+	"name": "z-read",
+	"version": "0.1.0",
+	"description": "Cross-source bookshelf and unified reading notes for Obsidian.",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"test": "node --experimental-strip-types --test src/path.test.ts src/notes.test.ts src/store.test.ts src/qr.test.ts src/weread.test.ts src/webview-guest.test.ts src/fanqie.test.ts src/folders.test.ts",
+		"version": "node version-bump.mjs && git add manifest.json versions.json"
+	},
+	"keywords": [
+		"obsidian",
+		"plugin",
+		"read",
+		"weread"
+	],
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^22.15.17",
+		"esbuild": "0.25.5",
+		"obsidian": "latest",
+		"typescript": "^5.8.3"
+	},
+	"dependencies": {
+		"uqr": "^0.1.3"
+	}
+}

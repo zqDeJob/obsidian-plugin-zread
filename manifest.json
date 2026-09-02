@@ -1,0 +1,10 @@
+{
+	"id": "z-read",
+	"name": "Z-Read",
+	"version": "0.1.0",
+	"minAppVersion": "1.5.0",
+	"description": "跨来源书架：微信读书 / 番茄 / 起点 / 本地导入，在 Obsidian 里打开并写统一笔记。",
+	"author": "kylin",
+	"requestUrl": true,
+	"isDesktopOnly": false
+}

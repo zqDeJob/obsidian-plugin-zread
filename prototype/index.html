@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Z-Read · 在线读书管理原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&family=ZCOOL+XiaoWei&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --wall: #dfe6df;
+      --paper: #f6f3ec;
+      --ink: #1a211c;
+      --muted: #5e6a62;
+      --line: #c5cfc6;
+      --shelf: #5a4333;
+      --shelf-edge: #3f2e22;
+      --lamp: #c9842a;
+      --lamp-soft: #f3e4c8;
+      --raised: #f3f6f2;
+      --weread: #2f6b52;
+      --fanqie: #c0562a;
+      --qidian: #1e4e86;
+      --local: #6e5840;
+      --jjwxc: #8a3d5b;
+      --font: "Noto Sans SC", "PingFang SC", sans-serif;
+      --display: "ZCOOL XiaoWei", "Noto Serif SC", serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--wall);
+      color: var(--ink);
+    }
+    button, .chip { font-family: inherit; cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+      outline: 2px solid var(--lamp);
+      outline-offset: 2px;
+    }
+
+    .obsidian { width: 100vw; height: 100vh; display: grid; grid-template-columns: 48px 1fr; overflow: hidden; }
+    .ribbon {
+      background: #eef2ed;
+      border-right: 1px solid var(--line);
+      display: flex; flex-direction: column; align-items: center;
+      padding: 10px 0; gap: 8px;
+    }
+    .ribbon button {
+      width: 32px; height: 32px; border: 0; border-radius: 8px;
+      background: transparent; color: var(--muted); font-size: 16px;
+    }
+    .ribbon button.active { background: #fff; color: var(--weread); box-shadow: inset 2px 0 0 var(--weread); }
+
+    .workspace { min-width: 0; display: grid; grid-template-rows: auto 1fr; }
+    header {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 16px; background: #f7f9f6; border-bottom: 1px solid var(--line);
+    }
+    .brand { font-family: var(--display); font-size: 22px; line-height: 1; }
+    .brand small { font-family: var(--font); font-size: 12px; color: var(--muted); margin-left: 8px; font-weight: 500; }
+    .tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+    .tabs button {
+      border: 0; background: transparent; color: var(--muted);
+      padding: 6px 12px; border-radius: 8px; font-size: 13px;
+    }
+    .tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 0 var(--line); }
+    .spacer { flex: 1; }
+    .btn, .ghost, .chip {
+      border-radius: 8px; font-size: 13px; padding: 7px 12px; border: 1px solid transparent;
+    }
+    .btn { background: var(--weread); color: #fff; font-weight: 600; border: 0; }
+    .btn.lamp { background: var(--lamp); }
+    .ghost { background: #fff; border-color: var(--line); color: var(--ink); }
+    .chip {
+      background: #fff; border-color: var(--line); color: var(--muted); font-size: 12px; padding: 4px 10px;
+    }
+    .chip.on { color: var(--weread); border-color: var(--weread); background: #e7f2ec; }
+
+    main { min-height: 0; overflow: hidden; }
+    .view { display: none; height: 100%; min-height: 0; }
+    .view.on { display: grid; }
+
+    #view-shelf { grid-template-columns: 220px 1fr; }
+    .side {
+      border-right: 1px solid var(--line);
+      background: #f4f7f3;
+      overflow: auto;
+      padding: 14px;
+    }
+    .side h2, .pane-head h2, .reader-meta h1, .spec h2 { margin: 0; }
+    .side h2 { font-size: 12px; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+    .src-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 18px; }
+    .src-list button {
+      display: flex; align-items: center; gap: 8px;
+      border: 0; background: transparent; text-align: left;
+      padding: 8px 10px; border-radius: 8px; color: var(--ink); font-size: 13px;
+    }
+    .src-list button.on { background: #fff; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .count { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    .side label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 6px; }
+    select, input[type="search"], input[type="text"], input[type="url"], textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px 10px; background: #fff; color: var(--ink); font: inherit; font-size: 13px;
+    }
+    textarea { min-height: 88px; resize: vertical; }
+
+    .library { overflow: auto; padding: 18px 22px 40px; }
+    .lib-toolbar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .search { flex: 1; min-width: 180px; }
+    .empty {
+      border: 1px dashed var(--line); border-radius: 12px; padding: 28px;
+      color: var(--muted); background: rgba(255,255,255,.45);
+    }
+
+    .shelf-block { margin: 0 0 28px; }
+    .shelf-label {
+      display: flex; align-items: baseline; gap: 10px;
+      font-size: 13px; font-weight: 600; margin: 0 0 10px;
+    }
+    .shelf-label span { font-family: var(--mono); font-size: 11px; color: var(--muted); font-weight: 400; }
+    .books {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+      gap: 14px 12px;
+      padding: 14px 12px 22px;
+      background:
+        linear-gradient(var(--wall), var(--wall)) padding-box,
+        linear-gradient(#0000, #0000) border-box;
+      border-bottom: 10px solid var(--shelf);
+      box-shadow: 0 10px 0 var(--shelf-edge);
+      border-radius: 4px 4px 0 0;
+    }
+    .book {
+      appearance: none; border: 0; padding: 0; background: transparent;
+      text-align: left; display: grid; gap: 8px;
+    }
+    .jacket {
+      height: 168px; border-radius: 3px 8px 8px 3px;
+      color: #f6f3ec; padding: 10px 8px 12px 14px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      box-shadow: 4px 6px 12px rgba(26,33,28,.18);
+      position: relative;
+      background: linear-gradient(160deg, var(--c, var(--local)), #1a211c 120%);
+    }
+    .jacket::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 8px;
+      background: color-mix(in srgb, #fff 18%, var(--c, var(--local)));
+      border-radius: 3px 0 0 3px;
+    }
+    .jacket b {
+      font-family: var(--display); font-size: 18px; font-weight: 400;
+      writing-mode: vertical-rl; letter-spacing: .12em;
+      max-height: 118px; overflow: hidden;
+    }
+    .jacket i { font-style: normal; font-size: 10px; opacity: .8; }
+    .book figcaption { display: grid; gap: 2px; }
+    .book strong { font-size: 13px; font-weight: 600; line-height: 1.35; }
+    .book em { font-style: normal; font-size: 11px; color: var(--muted); }
+    .progress {
+      height: 3px; background: #cfd8d1; border-radius: 99px; overflow: hidden; margin-top: 4px;
+    }
+    .progress > i { display: block; height: 100%; background: var(--c, var(--lamp)); }
+
+    #view-store, #view-channels, #view-spec, #view-settings { overflow: auto; padding: 20px 24px 48px; align-content: start; }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+      gap: 14px;
+      width: 100%;
+    }
+    .card {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px;
+    }
+    .card h3 { margin: 0 0 6px; font-size: 16px; }
+    .card p, .muted { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .url { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .status {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--raised);
+    }
+    .status.ok { background: #e7f2ec; color: var(--weread); }
+    .status.warn { background: var(--lamp-soft); color: #7a4e10; }
+
+    #view-reader { grid-template-columns: 220px minmax(0, 1fr) 300px; }
+    .reader-side { border-right: 1px solid var(--line); overflow: auto; background: #f4f7f3; padding: 16px; }
+    .cover-lg {
+      height: 160px; border-radius: 4px 12px 12px 4px; margin-bottom: 12px;
+      background: linear-gradient(160deg, var(--c), #1a211c);
+      color: #f6f3ec; padding: 14px 12px;
+      font-family: var(--display); font-size: 22px; writing-mode: vertical-rl; letter-spacing: .14em;
+    }
+    .reader-meta h1 { font-size: 18px; font-family: var(--display); font-weight: 400; }
+    .chapters { display: flex; flex-direction: column; gap: 4px; margin-top: 14px; }
+    .chapters button {
+      border: 0; background: transparent; text-align: left; padding: 8px; border-radius: 8px; font-size: 13px;
+    }
+    .chapters button.on { background: #fff; }
+    .reader-main { overflow: auto; background: var(--paper); min-width: 0; }
+    .reader-top {
+      position: sticky; top: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      padding: 10px 18px; background: color-mix(in srgb, var(--paper) 88%, #fff);
+      border-bottom: 1px solid #eadfca; z-index: 1;
+    }
+    .article { max-width: 720px; margin: 0 auto; padding: 28px 24px 80px; line-height: 1.9; font-size: 16px; }
+    .article h2 { font-family: var(--display); font-size: 26px; font-weight: 400; }
+    .hl { background: #f3e4c8; border-bottom: 1px solid var(--lamp); }
+    .note {
+      border-left: 3px solid var(--lamp); padding: 8px 12px; margin: 0;
+      background: #fff8ea; font-size: 14px; color: #5b4a2a;
+    }
+    .hl-item, .note-item {
+      padding: 12px 0; border-bottom: 1px dashed #eadfca;
+    }
+    .notes-pane {
+      border-left: 1px solid var(--line); background: #f7f9f6;
+      display: grid; grid-template-rows: auto auto 1fr; min-height: 0; min-width: 0;
+    }
+    .notes-head { padding: 12px 14px 8px; border-bottom: 1px solid var(--line); }
+    .notes-head h2 { margin: 0; font-size: 14px; }
+    .notes-head .path { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px; word-break: break-all; }
+    .note-composer { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .note-composer textarea { min-height: 72px; }
+    .notes-list { overflow: auto; padding: 4px 14px 24px; }
+    .note-item { display: grid; gap: 6px; }
+    .note-item .muted { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .webview {
+      margin: 16px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff;
+      min-height: calc(100% - 32px);
+    }
+    .wv-bar {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      background: #eef2ed; border-bottom: 1px solid var(--line); font-size: 12px;
+    }
+    .wv-dots { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--weread)); }
+    .wv-url { font-family: var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wv-body { padding: 28px 24px 40px; line-height: 1.8; }
+    .wv-body h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0 0 8px; }
+
+    .modal {
+      position: fixed; inset: 0; background: rgba(26,33,28,.42);
+      display: none; place-items: center; padding: 20px; z-index: 20;
+    }
+    .modal.on { display: grid; }
+    .dialog {
+      width: min(640px, 100%); background: #fff; border-radius: 16px; padding: 20px;
+      box-shadow: 0 20px 50px rgba(26,33,28,.25);
+    }
+    .drop {
+      border: 1.5px dashed var(--line); border-radius: 12px; padding: 28px; text-align: center;
+      background: var(--raised); color: var(--muted);
+    }
+    .drop.over { border-color: var(--weread); background: #e7f2ec; color: var(--weread); }
+
+    .bind-dialog { width: min(440px, 100%); }
+    .bind-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; text-align: left; }
+    .bind-head h2 { margin: 0; font-size: 18px; }
+    .bind-tabs {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;
+      background: var(--raised); border-radius: 10px; padding: 4px; margin: 14px 0 12px;
+    }
+    .bind-tabs button {
+      border: 0; background: transparent; color: var(--muted);
+      padding: 8px 6px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    }
+    .bind-tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+    .qr-pane { text-align: center; }
+    .qr-well {
+      --c: var(--weread);
+      width: 216px; height: 216px; margin: 8px auto 12px;
+      display: grid; place-items: center; position: relative;
+    }
+    .qr-well::before, .qr-well::after,
+    .qr-well i::before, .qr-well i::after {
+      content: ""; position: absolute; width: 22px; height: 22px; border: 2px solid var(--c);
+    }
+    .qr-well::before { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+    .qr-well::after { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+    .qr-well i::before { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+    .qr-well i::after { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+    .qr-well i { position: absolute; inset: 0; pointer-events: none; }
+    .qr-well svg { width: 176px; height: 176px; background: #fff; }
+    .qr-well.ok svg { opacity: .28; }
+    .qr-stamp {
+      position: absolute; inset: 0; display: none; place-items: center;
+      font-family: var(--display); font-size: 28px; color: var(--weread);
+    }
+    .qr-well.ok .qr-stamp { display: grid; }
+    .paste-pane label { display: block; text-align: left; font-size: 12px; color: var(--muted); margin: 8px 0 6px; }
+    .web-pane { text-align: left; }
+
+    .toast-wrap {
+      position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 30;
+    }
+    .toast {
+      background: #1a211c; color: #f6f3ec; padding: 10px 14px; border-radius: 10px;
+      font-size: 13px; box-shadow: 0 8px 20px rgba(0,0,0,.2);
+    }
+
+    .spec { width: 100%; min-width: 0; }
+    #view-spec .spec { max-width: 880px; }
+    .lead { max-width: 72ch; }
+    .setting {
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+      gap: 16px; align-items: center;
+      padding: 16px 0; border-bottom: 1px solid var(--line); max-width: 820px;
+    }
+    .setting h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+    .setting .ctrl { display: grid; gap: 8px; }
+    .preview-path {
+      font-family: var(--mono); font-size: 13px; background: #fff;
+      border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px;
+      max-width: 820px; margin-top: 8px;
+    }
+    .toggle {
+      width: 40px; height: 22px; border-radius: 99px; border: 0;
+      background: #c5cfc6; position: relative; justify-self: end;
+    }
+    .toggle.on { background: var(--weread); }
+    .toggle i {
+      position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff; display: block; transition: left .15s;
+    }
+    .toggle.on i { left: 21px; }
+    .spec h2 { font-family: var(--display); font-size: 28px; margin: 8px 0 12px; }
+    .spec h3 { margin: 22px 0 8px; font-size: 16px; }
+    .spec .setting h3 { margin: 0 0 4px; font-size: 14px; }
+    .spec ul { margin: 0; padding-left: 1.2em; line-height: 1.7; }
+    .prio { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; }
+    .p0 { background: #e7f2ec; color: var(--weread); }
+    .p1 { background: var(--lamp-soft); color: #7a4e10; }
+    .p2 { background: var(--raised); color: var(--muted); }
+
+    @media (max-width: 1100px) {
+      #view-reader { grid-template-columns: 1fr; }
+      .reader-side, .notes-pane { border: 0; border-bottom: 1px solid var(--line); max-height: 36vh; }
+      .notes-pane { border-bottom: 0; border-top: 1px solid var(--line); max-height: 42vh; }
+    }
+    @media (max-width: 860px) {
+      #view-shelf { grid-template-columns: 1fr; }
+      .side { border-right: 0; border-bottom: 1px solid var(--line); max-height: 42vh; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="obsidian">
+    <nav class="ribbon" aria-label="Obsidian 侧栏">
+      <button title="文件">📁</button>
+      <button class="active" title="Z-Read" data-act="nav" data-view="shelf">📖</button>
+      <button title="搜索">🔎</button>
+    </nav>
+    <div class="workspace">
+      <header>
+        <div class="brand">Z-Read <small>在线读书管理 · 原型</small></div>
+        <nav class="tabs" aria-label="主视图">
+          <button data-act="nav" data-view="shelf" class="on">书架</button>
+          <button data-act="nav" data-view="store">书城入口</button>
+          <button data-act="nav" data-view="channels">渠道绑定</button>
+          <button data-act="nav" data-view="settings">设置</button>
+          <button data-act="nav" data-view="spec">需求拆分</button>
+        </nav>
+        <div class="spacer"></div>
+        <button class="ghost" data-act="open-import">导入书籍</button>
+        <button class="btn" data-act="sync-all">同步已绑定渠道</button>
+      </header>
+      <main>
+        <section id="view-shelf" class="view on"></section>
+        <section id="view-store" class="view"></section>
+        <section id="view-channels" class="view"></section>
+        <section id="view-reader" class="view"></section>
+        <section id="view-settings" class="view"></section>
+        <section id="view-spec" class="view"></section>
+      </main>
+    </div>
+  </div>
+
+  <div id="import-modal" class="modal" role="dialog" aria-labelledby="import-title">
+    <div class="dialog">
+      <h2 id="import-title" style="margin:0 0 8px;font-size:18px;">导入本地书籍</h2>
+      <p class="muted">原型支持真实读取 TXT / Markdown；EPUB / PDF / MOBI 只登记到书架（正式插件再解析）。</p>
+      <div id="dropzone" class="drop">把文件拖到这里，或
+        <label class="btn" style="display:inline-block;margin-top:10px;">选择文件
+          <input id="file-input" type="file" accept=".txt,.md,.epub,.pdf,.mobi,.azw3" multiple hidden />
+        </label>
+      </div>
+      <div class="row">
+        <button class="ghost" data-act="close-import">取消</button>
+      </div>
+    </div>
+  </div>
+  <div id="bind-modal" class="modal" role="dialog" aria-labelledby="bind-title">
+    <div class="dialog bind-dialog" id="bind-body"></div>
+  </div>
+  <div class="toast-wrap" id="toasts"></div>
+
+  <script>
+    const SOURCES = {
+      weread: {
+        id: "weread", name: "微信读书", url: "https://weread.qq.com", color: "var(--weread)",
+        bind: "扫码获取 API Key", qrApp: "微信",
+        qrHint: "对标 Weread 插件：弹出二维码，微信扫码后自动写入 API Key。",
+        pasteLabel: "API Key", pastePh: "wr_key_…",
+        pasteHint: "手机可打开 weread.qq.com/api/skills/apikeyGet 复制 Key 再粘贴。",
+        cookieLabel: "Cookie（备选）", cookiePh: "wr_skey=…",
+        webLogin: "https://weread.qq.com"
+      },
+      fanqie: {
+        id: "fanqie", name: "番茄小说", url: "https://fanqienovel.com", color: "var(--fanqie)",
+        bind: "抖音 / 番茄 App 扫码", qrApp: "抖音或番茄",
+        qrHint: "用抖音或番茄 App 扫码授权书架。正式插件走官方登录页，原型用扫码演示。",
+        pasteLabel: "用户 ID", pastePh: "填写账号 ID",
+        pasteHint: "没有扫码时，可粘贴用户 ID 或登录 Cookie。",
+        cookieLabel: "Cookie（备选）", cookiePh: "sessionid=…",
+        webLogin: "https://fanqienovel.com"
+      },
+      qidian: {
+        id: "qidian", name: "起点中文网", url: "https://www.qidian.com", color: "var(--qidian)",
+        bind: "QQ / 微信扫码", qrApp: "QQ 或微信",
+        qrHint: "起点常用 QQ / 微信扫码登录。扫过之后同步书架和进度。",
+        pasteLabel: "用户 ID", pastePh: "填写账号 ID",
+        pasteHint: "也可粘贴账号 ID，或从浏览器复制登录 Cookie。",
+        cookieLabel: "Cookie（备选）", cookiePh: "ywguid=…",
+        webLogin: "https://passport.yuewen.com"
+      },
+      jjwxc: {
+        id: "jjwxc", name: "晋江文学城", url: "https://www.jjwxc.net", color: "var(--jjwxc)",
+        bind: "网页登录 / 粘贴 Cookie", qrApp: "晋江 App",
+        qrHint: "晋江以网页登录为主。原型仍给一张码，方便走同一套快捷绑定。",
+        pasteLabel: "用户 ID", pastePh: "填写账号 ID",
+        pasteHint: "推荐打开登录页，登录后点「我已登录」；或粘贴 Cookie。",
+        cookieLabel: "Cookie（备选）", cookiePh: "token=…",
+        webLogin: "https://www.jjwxc.net"
+      },
+      local: { id: "local", name: "本地导入", url: "", color: "var(--local)", bind: "" }
+    };
+
+    const PLATFORMS = [
+      { id: "weread", name: "微信读书", url: "https://weread.qq.com", desc: "划线、想法、书评、阅读进度。参考 Weread 插件的 API Key / Cookie 双模式。" },
+      { id: "fanqie", name: "番茄小说", url: "https://fanqienovel.com", desc: "绑定账号后拉取书架与阅读进度。正文版权限制，插件只同步元数据与笔记，不抓正文。" },
+      { id: "qidian", name: "起点中文网", url: "https://www.qidian.com", desc: "书架、进度、书签。付费章节只保留进度，不缓存正文。" },
+      { id: "jjwxc", name: "晋江文学城", url: "https://www.jjwxc.net", desc: "预置入口。首期可不做同步适配器。" },
+      { id: "qimao", name: "七猫免费小说", url: "https://www.qimao.com", desc: "预置入口。" }
+    ];
+
+    const SEED_BOOKS = [
+      {
+        id: "wr-1", source: "weread", title: "置身事内", author: "兰小欢",
+        progress: 42, lastRead: "2026-08-28", remoteId: "3300022341",
+        chapters: ["引言", "地方政府的权力与事务", "财税与政府行为"],
+        text: "理解中国经济，先要理解地方政府如何做事。土地、投资、产业政策，都嵌在一套激励结构里。\n\n本书把宏观现象拆回可观察的地方行为：事权、财权、晋升与风险。",
+        highlights: [{ text: "土地、投资、产业政策，都嵌在一套激励结构里。", chapter: "引言" }],
+        notes: [{ text: "和单位里「项目制」很像：事权下沉、资源上收。", chapter: "引言" }]
+      },
+      {
+        id: "wr-2", source: "weread", title: "卡片笔记写作法", author: "申克·阿伦斯",
+        progress: 68, lastRead: "2026-08-30", remoteId: "3300012345",
+        chapters: ["引言", "四个基本原则", "成功写作的六个步骤"],
+        text: "笔记不是存放信息的抽屉，而是思考的外部工作台。永久笔记只写自己的话，并链到已有卡片。",
+        highlights: [{ text: "笔记不是存放信息的抽屉，而是思考的外部工作台。", chapter: "四个基本原则" }],
+        notes: []
+      },
+      {
+        id: "wr-3", source: "weread", title: "把时间当作朋友", author: "李笑来",
+        progress: 100, lastRead: "2026-07-12", remoteId: "330009876",
+        chapters: ["心智的力量", "管理时间"],
+        text: "把时间当作朋友，而不是敌人。注意力才是真正稀缺的资源。",
+        highlights: [], notes: []
+      },
+      {
+        id: "fq-1", source: "fanqie", title: "大奉打更人", author: "卖报小郎君",
+        progress: 23, lastRead: "2026-08-29", remoteId: "71243911512",
+        chapters: ["许七安", "京城夜", "大理寺"],
+        text: "【原型占位】正式插件不抓取付费/平台正文，只同步书目、进度与你自己的笔记。点「打开原站」继续阅读。",
+        highlights: [], notes: [{ text: "看到许七安入京，停一下做人物卡。", chapter: "京城夜" }]
+      },
+      {
+        id: "qd-1", source: "qidian", title: "道诡异仙", author: "狐尾的笔",
+        progress: 55, lastRead: "2026-08-21", remoteId: "1033293455",
+        chapters: ["诸葛渊", "司命", "大齐"],
+        text: "【原型占位】起点书籍以进度与书签为主。打开原站阅读正文。",
+        highlights: [], notes: []
+      },
+      {
+        id: "loc-1", source: "local", title: "随笔合集", author: "本地",
+        progress: 12, lastRead: "2026-08-31", format: "txt",
+        chapters: ["全文"],
+        text: "这是一本从本地导入的 TXT 示例。\n\n你可以把任意 txt / md 拖进「导入书籍」，正文会显示在阅读器里。",
+        highlights: [], notes: []
+      }
+    ];
+
+    const KEY = "zread-proto-v1";
+    const DEFAULT_SETTINGS = {
+      notesFolder: "Z-Read/笔记",
+      fileName: "{{title}}",
+      subfolder: "none",
+      dailyNotes: false,
+      dailyFolder: "07-日记"
+    };
+    const FOLDER_PRESETS = ["Z-Read/笔记", "Weread", "02-麒麟信安/读书", "Books"];
+    const state = load();
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (raw) {
+          const s = JSON.parse(raw);
+          if (Array.isArray(s.books) && s.channels) {
+            s.settings = Object.assign({}, DEFAULT_SETTINGS, s.settings || {});
+            return s;
+          }
+        }
+      } catch {}
+      return {
+        view: "shelf",
+        filter: "all",
+        mode: "split",
+        query: "",
+        sort: "recent",
+        selectedId: null,
+        readerTab: "text",
+        chapter: 0,
+        customPlatforms: [],
+        settings: { ...DEFAULT_SETTINGS },
+        channels: {
+          weread: { bound: true, account: "kylin", method: "qr", lastSync: "2026-08-30 21:12" },
+          fanqie: { bound: false, account: "", lastSync: "" },
+          qidian: { bound: false, account: "", lastSync: "" },
+          jjwxc: { bound: false, account: "", lastSync: "" }
+        },
+        books: structuredClone(SEED_BOOKS)
+      };
+    }
+    function save() {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    }
+    function toast(msg) {
+      const el = document.createElement("div");
+      el.className = "toast";
+      el.textContent = msg;
+      document.getElementById("toasts").appendChild(el);
+      setTimeout(() => el.remove(), 2400);
+    }
+    function sourceOf(id) { return SOURCES[id] || SOURCES.local; }
+    function booksOf(src) {
+      let list = state.books.slice();
+      if (src && src !== "all") list = list.filter((b) => b.source === src);
+      if (state.query.trim()) {
+        const q = state.query.trim().toLowerCase();
+        list = list.filter((b) => (b.title + b.author).toLowerCase().includes(q));
+      }
+      if (state.sort === "recent") list.sort((a, b) => (b.lastRead || "").localeCompare(a.lastRead || ""));
+      if (state.sort === "progress") list.sort((a, b) => b.progress - a.progress);
+      if (state.sort === "title") list.sort((a, b) => a.title.localeCompare(b.title, "zh"));
+      return list;
+    }
+    function openUrl(source, book) {
+      const src = sourceOf(source);
+      if (source === "weread" && book?.remoteId) return `https://weread.qq.com/web/reader/${book.remoteId}`;
+      if (source === "fanqie" && book?.remoteId) return `https://fanqienovel.com/page/${book.remoteId}`;
+      if (source === "qidian" && book?.remoteId) return `https://www.qidian.com/book/${book.remoteId}/`;
+      return src.url;
+    }
+
+    function jacket(book) {
+      const src = sourceOf(book.source);
+      return `<div class="jacket" style="--c:${src.color}"><b>${escapeHtml(book.title)}</b><i>${src.name}</i></div>`;
+    }
+    function bookCard(book) {
+      const src = sourceOf(book.source);
+      return `<button class="book" data-act="open-book" data-id="${book.id}">
+        ${jacket(book)}
+        <figcaption>
+          <strong>${escapeHtml(book.title)}</strong>
+          <em>${escapeHtml(book.author)} · ${book.progress}%</em>
+          <div class="progress" style="--c:${src.color}"><i style="width:${book.progress}%"></i></div>
+        </figcaption>
+      </button>`;
+    }
+    function shelfRow(title, list, hint) {
+      if (!list.length) return "";
+      return `<section class="shelf-block">
+        <div class="shelf-label">${title}<span>${hint || list.length + " 本"}</span></div>
+        <div class="books">${list.map(bookCard).join("")}</div>
+      </section>`;
+    }
+
+    function renderShelf() {
+      const counts = Object.fromEntries(Object.keys(SOURCES).map((k) => [k, state.books.filter((b) => b.source === k).length]));
+      const list = booksOf(state.filter);
+      let shelves = "";
+      if (!list.length) {
+        shelves = `<div class="empty">书架是空的。去「书城入口」打开站点，或点右上角导入 TXT / EPUB。</div>`;
+      } else if (state.mode === "mix" || state.filter !== "all") {
+        shelves = shelfRow(state.filter === "all" ? "全部来源 · 混放" : sourceOf(state.filter).name, list);
+      } else {
+        shelves = ["weread", "fanqie", "qidian", "jjwxc", "local"]
+          .map((id) => shelfRow(sourceOf(id).name, booksOf(id)))
+          .join("");
+      }
+      document.getElementById("view-shelf").innerHTML = `
+        <aside class="side">
+          <h2>来源</h2>
+          <div class="src-list">
+            ${[{ id: "all", name: "全部", color: "var(--lamp)", n: state.books.length }]
+              .concat(Object.values(SOURCES).map((s) => ({ ...s, n: counts[s.id] || 0 })))
+              .map((s) => `<button class="${state.filter === s.id ? "on" : ""}" data-act="filter" data-id="${s.id}">
+                <i class="dot" style="background:${s.color}"></i>${s.name}<span class="count">${s.n}</span>
+              </button>`).join("")}
+          </div>
+          <label>摆放</label>
+          <div class="row">
+            <button class="chip ${state.mode === "split" ? "on" : ""}" data-act="mode" data-id="split">分来源上架</button>
+            <button class="chip ${state.mode === "mix" ? "on" : ""}" data-act="mode" data-id="mix">混放一起</button>
+          </div>
+          <label for="sort">排序</label>
+          <select id="sort">
+            <option value="recent" ${state.sort === "recent" ? "selected" : ""}>最近阅读</option>
+            <option value="progress" ${state.sort === "progress" ? "selected" : ""}>阅读进度</option>
+            <option value="title" ${state.sort === "title" ? "selected" : ""}>书名</option>
+          </select>
+        </aside>
+        <div class="library">
+          <div class="lib-toolbar">
+            <input class="search" type="search" placeholder="搜索书名或作者" value="${escapeAttr(state.query)}" id="q" />
+          </div>
+          ${shelves}
+        </div>`;
+      document.getElementById("sort").onchange = (e) => { state.sort = e.target.value; save(); render(); };
+      document.getElementById("q").oninput = (e) => { state.query = e.target.value; save(); renderShelf(); };
+    }
+
+    function renderStore() {
+      const all = PLATFORMS.concat(state.customPlatforms);
+      document.getElementById("view-store").innerHTML = `
+        <div class="spec">
+          <p class="muted lead">内置常见在线读书地址。原型用系统浏览器打开；正式插件可做成 Ribbon 快捷入口，或 Electron Webview（许多站点禁止 iframe）。</p>
+          <div class="card-grid">
+            ${all.map((p) => {
+              const bound = state.channels[p.id]?.bound;
+              return `<article class="card">
+                <h3>${escapeHtml(p.name)}</h3>
+                <div class="url">${escapeHtml(p.url)}</div>
+                <p>${escapeHtml(p.desc || "自定义入口")}</p>
+                ${p.id in state.channels ? `<div class="status ${bound ? "ok" : "warn"}">${bound ? "已绑定" : "未绑定"}</div>` : ""}
+                <div class="row">
+                  <a class="btn" href="${p.url}" target="_blank" rel="noreferrer">打开站点</a>
+                ${p.id in state.channels ? `<button class="ghost" data-act="open-bind" data-id="${p.id}">去绑定</button>` : ""}
+                </div>
+              </article>`;
+            }).join("")}
+          </div>
+          <h3 style="margin-top:22px">添加自定义入口</h3>
+          <div class="card">
+            <label>名称</label>
+            <input id="np-name" type="text" placeholder="例如 掌阅" />
+            <label style="display:block;margin-top:8px">网址</label>
+            <input id="np-url" type="url" placeholder="https://" />
+            <div class="row"><button class="btn" data-act="add-platform">加入书城</button></div>
+          </div>
+        </div>`;
+    }
+
+    function renderChannels() {
+      document.getElementById("view-channels").innerHTML = `
+        <div class="spec">
+          <p class="muted lead">快捷绑定优先扫码（对标 <a href="https://github.com/zhaohongxuan/obsidian-weread-plugin" target="_blank" rel="noreferrer">Weread 插件</a>：弹出二维码 → 手机扫完自动拿凭证）。扫不了时再粘贴 API Key / Cookie，或打开官方登录页。</p>
+          <div class="card-grid">
+            ${["weread", "fanqie", "qidian", "jjwxc"].map((id) => {
+              const s = SOURCES[id];
+              const c = state.channels[id];
+              const how = { qr: "扫码", web: "网页登录", paste: "粘贴凭证" }[c.method] || "";
+              const status = c.bound
+                ? "已绑定" + (how ? " · " + how : "") + (c.account ? " · " + c.account : "")
+                : "未绑定";
+              return `<article class="card">
+                <h3>${s.name}</h3>
+                <p>${s.bind}</p>
+                <div class="status ${c.bound ? "ok" : "warn"}">${status}</div>
+                ${c.lastSync ? `<p class="muted">上次同步 ${c.lastSync}</p>` : `<p class="muted">点扫码弹出二维码；可立刻点「已扫码」，或等原型自动完成。</p>`}
+                <div class="row">
+                  <button class="btn" data-act="open-bind" data-id="${id}" data-tab="qr">${c.bound ? "重新扫码" : "扫码绑定"}</button>
+                  <button class="ghost" data-act="open-bind" data-id="${id}" data-tab="paste">粘贴凭证</button>
+                  ${c.bound ? `<button class="ghost" data-act="unbind" data-id="${id}">解除</button>` : ""}
+                </div>
+              </article>`;
+            }).join("")}
+          </div>
+        </div>`;
+    }
+
+    function settings() {
+      if (!state.settings) state.settings = { ...DEFAULT_SETTINGS };
+      return Object.assign({}, DEFAULT_SETTINGS, state.settings);
+    }
+    function sanitizeSeg(seg) {
+      return String(seg || "").replace(/[\\/:*?"<>|]/g, "_").replace(/^\.+/, "").trim();
+    }
+    function vaultPath(book) {
+      const cfg = settings();
+      const src = sourceOf(book.source);
+      let name = (cfg.fileName || "{{title}}")
+        .replaceAll("{{title}}", book.title || "未命名")
+        .replaceAll("{{author}}", book.author || "佚名")
+        .replaceAll("{{source}}", src.name || "");
+      name = sanitizeSeg(name) || "未命名";
+      if (!name.toLowerCase().endsWith(".md")) name += ".md";
+      const parts = [cfg.notesFolder.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "")];
+      if (cfg.subfolder === "source") parts.push(sanitizeSeg(src.name));
+      if (cfg.subfolder === "book") parts.push(sanitizeSeg(book.title || "未命名"));
+      parts.push(name);
+      return parts.filter(Boolean).join("/");
+    }
+    function hasNativeText(book) {
+      const t = book.text || "";
+      return t && !t.includes("【原型占位】") && !t.includes("【TXT") && !t.startsWith("【");
+    }
+    function addBookNote(book, text, extra) {
+      const body = String(text || "").trim();
+      if (!body) { toast("先写一点笔记"); return false; }
+      if (!Array.isArray(book.notes)) book.notes = [];
+      book.notes.unshift({
+        id: "n-" + Date.now(),
+        text: body,
+        chapter: extra?.chapter || book.chapters[state.chapter] || "",
+        at: now(),
+        from: extra?.from || "手写"
+      });
+      book.lastRead = today();
+      save();
+      return true;
+    }
+
+    function renderReader() {
+      const book = state.books.find((b) => b.id === state.selectedId);
+      if (!book) { state.view = "shelf"; render(); return; }
+      if (!Array.isArray(book.notes)) book.notes = [];
+      book.notes.forEach((n, i) => { if (!n.id) n.id = "n-legacy-" + i; });
+      if (!["native", "embed", "highlights"].includes(state.readerTab)) {
+        state.readerTab = book.source === "local" || hasNativeText(book) ? "native" : "embed";
+      }
+      const src = sourceOf(book.source);
+      const chapter = book.chapters[state.chapter] || book.chapters[0] || book.title;
+      const site = openUrl(book.source, book);
+      const nativeBody = hasNativeText(book)
+        ? `<article class="article">
+            <h2>${escapeHtml(chapter)}</h2>
+            <p>${markHighlights(escapeHtml(book.text), book.highlights).replace(/\n\n/g, "</p><p>")}</p>
+          </article>`
+        : `<article class="article">
+            <h2>${escapeHtml(chapter)}</h2>
+            <p class="muted">这本书的正文在 ${src.name}。插件不把付费章节存进 Vault，请切到「原站阅读」在 Obsidian 里读；右侧笔记照常写。</p>
+            ${book.highlights.length ? "<p>已同步的划线也可以当摘录：</p>" + book.highlights.map((h) => `<p><mark class="hl">${escapeHtml(h.text)}</mark></p>`).join("") : ""}
+            <div class="row"><button class="btn" data-act="rtab" data-id="embed">在 Obsidian 里打开原站</button></div>
+          </article>`;
+      const embedBody = src.url
+        ? `<div class="webview" style="--c:${src.color}">
+            <div class="wv-bar"><i class="wv-dots"></i><span class="wv-url">${escapeHtml(site)}</span></div>
+            <div class="wv-body">
+              <h2>${escapeHtml(book.title)}</h2>
+              <p class="muted">${src.name} · ${escapeHtml(chapter)}</p>
+              <p>正式插件在此嵌入 ${src.name} 阅读页（Electron Webview）。你留在 Obsidian 里读任意渠道的书；右侧笔记与来源无关，都会写入同一份 Markdown。</p>
+              <p class="muted">许多站点禁止 iframe，所以原型用这张阅读框示意，不抓正文。</p>
+              <div class="row">
+                <a class="btn" href="${site}" target="_blank" rel="noreferrer">浏览器预览原站</a>
+              </div>
+            </div>
+          </div>`
+        : nativeBody;
+      const hlBody = `<article class="article"><h2>划线</h2>${
+        book.highlights.length
+          ? book.highlights.map((h, i) => `<div class="hl-item">
+              <div class="hl">${escapeHtml(h.text)}</div>
+              <div class="muted">${escapeHtml(h.chapter || "")}
+                <button class="ghost" data-act="clip-hl" data-i="${i}">收入统一笔记</button>
+              </div>
+            </div>`).join("")
+          : "<p class='muted'>还没有划线。微信读书同步后会出现在这里；本地书可在阅读时记摘录。</p>"
+      }</article>`;
+      const mid = { native: nativeBody, embed: embedBody, highlights: hlBody }[state.readerTab];
+      const noteItems = book.notes.length
+        ? book.notes.map((n) => `<div class="note-item">
+            <div class="note">${escapeHtml(n.text)}</div>
+            <div class="muted"><span>${[n.chapter, n.at, n.from].filter(Boolean).map(escapeHtml).join(" · ")}</span>
+              <button class="ghost" data-act="del-note" data-nid="${escapeAttr(n.id || "")}">删除</button>
+            </div>
+          </div>`).join("")
+        : "<p class='muted'>还没有笔记。任意渠道都写在这里，以后导出为同一份 md。</p>";
+      document.getElementById("view-reader").innerHTML = `
+        <aside class="reader-side">
+          <div class="cover-lg" style="--c:${src.color}">${escapeHtml(book.title)}</div>
+          <div class="reader-meta">
+            <h1>${escapeHtml(book.title)}</h1>
+            <p class="muted">${escapeHtml(book.author)} · ${src.name}</p>
+            <div class="progress" style="--c:${src.color}"><i style="width:${book.progress}%"></i></div>
+            <p class="muted">${book.progress}% · 最近 ${book.lastRead || "—"}</p>
+            <div class="row">
+              <button class="ghost" data-act="remove-book" data-id="${book.id}">移出书架</button>
+            </div>
+          </div>
+          <div class="chapters">
+            ${(book.chapters || []).map((c, i) =>
+              `<button class="${i === state.chapter ? "on" : ""}" data-act="chapter" data-i="${i}">${escapeHtml(c)}</button>`
+            ).join("")}
+          </div>
+        </aside>
+        <div class="reader-main">
+          <div class="reader-top">
+            <button class="ghost" data-act="nav" data-view="shelf">返回书架</button>
+            <button class="chip ${state.readerTab === "native" ? "on" : ""}" data-act="rtab" data-id="native">内置阅读</button>
+            ${src.url ? `<button class="chip ${state.readerTab === "embed" ? "on" : ""}" data-act="rtab" data-id="embed">原站阅读</button>` : ""}
+            <button class="chip ${state.readerTab === "highlights" ? "on" : ""}" data-act="rtab" data-id="highlights">划线 ${book.highlights.length}</button>
+          </div>
+          ${mid}
+        </div>
+        <aside class="notes-pane">
+          <div class="notes-head">
+            <h2>统一笔记</h2>
+            <div class="path">${escapeHtml(vaultPath(book))}</div>
+            <p class="muted" style="margin:6px 0 0">路径在设置里改，和 Weread 一样相对 Vault 根目录。</p>
+            <div class="row" style="margin-top:8px"><button class="ghost" data-act="nav" data-view="settings">改保存位置</button></div>
+          </div>
+          <div class="note-composer">
+            <textarea id="note-input" placeholder="读到哪里写到哪里，例如这一章的想法…"></textarea>
+            <div class="row">
+              <button class="btn" data-act="add-note">记到本章</button>
+            </div>
+          </div>
+          <div class="notes-list">${noteItems}</div>
+        </aside>`;
+    }
+
+    function previewBook() {
+      return state.books.find((b) => b.title === "置身事内")
+        || state.books[0]
+        || { title: "置身事内", author: "兰小欢", source: "weread" };
+    }
+    function applySetting(key, value) {
+      if (!state.settings) state.settings = { ...DEFAULT_SETTINGS };
+      state.settings[key] = value;
+      save();
+      const preview = document.getElementById("path-preview");
+      if (preview) preview.textContent = vaultPath(previewBook());
+    }
+
+    function renderSettings() {
+      const cfg = settings();
+      document.getElementById("view-settings").innerHTML = `
+        <div class="spec">
+          <p class="muted lead">对标 Weread：笔记必须落在 Vault 里某个目录，不能写死。正式插件走 Obsidian 的文件夹选择器；原型用路径 + 常用目录。</p>
+          <h2>设置</h2>
+          <h3>笔记落盘</h3>
+          <div class="setting">
+            <div>
+              <h3>Vault 目录</h3>
+              <p class="muted">相对库根目录，例如 <code>Z-Read/笔记</code>。所有渠道的统一笔记都写到这里。</p>
+            </div>
+            <div class="ctrl">
+              <input data-set="notesFolder" type="text" value="${escapeAttr(cfg.notesFolder)}" placeholder="Z-Read/笔记" />
+              <select id="folder-preset">
+                <option value="">常用目录…</option>
+                ${FOLDER_PRESETS.map((p) => `<option value="${escapeAttr(p)}" ${p === cfg.notesFolder ? "selected" : ""}>${escapeHtml(p)}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div class="setting">
+            <div>
+              <h3>文件名模板</h3>
+              <p class="muted">可用 <code>{{title}}</code> <code>{{author}}</code> <code>{{source}}</code>。和 Weread 的文件名格式同一思路。</p>
+            </div>
+            <div class="ctrl">
+              <input data-set="fileName" type="text" value="${escapeAttr(cfg.fileName)}" />
+            </div>
+          </div>
+          <div class="setting">
+            <div>
+              <h3>子文件夹</h3>
+              <p class="muted">可以按来源或书名再分一层，避免所有 md 堆在同一目录。</p>
+            </div>
+            <div class="ctrl">
+              <select data-set="subfolder">
+                <option value="none" ${cfg.subfolder === "none" ? "selected" : ""}>不分，全在笔记目录</option>
+                <option value="source" ${cfg.subfolder === "source" ? "selected" : ""}>按来源（微信读书 / 番茄 / 本地）</option>
+                <option value="book" ${cfg.subfolder === "book" ? "selected" : ""}>按书名建子文件夹</option>
+              </select>
+            </div>
+          </div>
+          <p class="muted" style="margin:16px 0 6px">当前会写成</p>
+          <div class="preview-path" id="path-preview">${escapeHtml(vaultPath(previewBook()))}</div>
+          <h3>Daily Notes</h3>
+          <div class="setting">
+            <div>
+              <h3>同步当日划线到日记</h3>
+              <p class="muted">可选。打开后把当天划线插入指定日记目录，和 Weread 一样。</p>
+            </div>
+            <button class="toggle ${cfg.dailyNotes ? "on" : ""}" data-act="toggle-daily" aria-pressed="${cfg.dailyNotes}"><i></i></button>
+          </div>
+          <div class="setting">
+            <div>
+              <h3>日记目录</h3>
+              <p class="muted">相对 Vault 的 Daily Notes 路径。</p>
+            </div>
+            <div class="ctrl">
+              <input data-set="dailyFolder" type="text" value="${escapeAttr(cfg.dailyFolder)}" ${cfg.dailyNotes ? "" : "disabled"} />
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderSpec() {
+      document.getElementById("view-spec").innerHTML = `
+        <div class="spec">
+          <p class="muted">先用这页对齐范围。HTML 原型覆盖带 <span class="prio p0">P0</span> 的交互；真正 Obsidian 插件等页面定稿后再填。</p>
+          <h2>Z-Read 做什么</h2>
+          <p>在 Obsidian 里维护一个<strong>跨来源书架</strong>。任意渠道的书都在插件里打开同一套工作台：中间阅读，右侧<strong>统一笔记</strong>，最后写成同一份 Markdown。</p>
+          <h3>模块 1 · 书城入口</h3>
+          <ul>
+            <li><span class="prio p0">P0</span> 内置微信读书、番茄、起点（可加晋江、七猫）及官方 URL</li>
+            <li><span class="prio p0">P0</span> 一键用外部浏览器打开；允许添加自定义 URL</li>
+            <li><span class="prio p0">P0</span> 点书架上的书即在 Obsidian 打开，不先跳到站外</li>
+          </ul>
+          <h3>模块 2 · 渠道绑定与同步</h3>
+          <ul>
+            <li><span class="prio p0">P0</span> 每个渠道一张绑定卡：扫码 / 粘贴凭证 / 网页登录</li>
+            <li><span class="prio p0">P0</span> 微信读书：对标 Weread，点「扫码绑定」弹出二维码，扫完自动写入 API Key；失败可粘贴 Key 或 Cookie</li>
+            <li><span class="prio p0">P0</span> 番茄 / 起点 / 晋江：同一套弹窗，扫码优先，其次粘贴 ID/Cookie，或打开官方登录页后点「我已登录」</li>
+            <li><span class="prio p1">P1</span> 正式插件里：微信读书走 Agent API；其它渠道能拉到什么就同步什么（书架、进度）</li>
+            <li><span class="prio p0">P0</span> 版权边界：不抓取平台付费/受保护正文，只同步用户自己的笔记与进度</li>
+          </ul>
+          <h3>模块 3 · 本地导入</h3>
+          <ul>
+            <li><span class="prio p0">P0</span> TXT / Markdown 导入并在阅读器打开</li>
+            <li><span class="prio p1">P1</span> EPUB 解析封面、目录、章节</li>
+            <li><span class="prio p2">P2</span> PDF / MOBI / AZW3</li>
+          </ul>
+          <h3>模块 4 · 书架</h3>
+          <ul>
+            <li><span class="prio p0">P0</span> 全部混放，或按来源分架</li>
+            <li><span class="prio p0">P0</span> 按来源筛选、搜索、按最近阅读/进度/书名排序</li>
+            <li><span class="prio p1">P1</span> 同一本书跨渠道去重合并（ISBN / 书名作者）</li>
+          </ul>
+          <h3>模块 5 · 阅读与统一笔记</h3>
+          <ul>
+            <li><span class="prio p0">P0</span> 任意来源进入同一书籍工作台：目录 + 阅读区 + 统一笔记</li>
+            <li><span class="prio p0">P0</span> 本地 TXT/EPUB：内置阅读器；在线书：插件内嵌原站阅读（Webview），不把付费正文存进库</li>
+            <li><span class="prio p0">P0</span> 笔记与渠道无关；保存位置在设置里配，相对 Vault 根目录</li>
+            <li><span class="prio p1">P1</span> Front Matter + 模板（对标 Weread），划线同步进同一份笔记</li>
+            <li><span class="prio p2">P2</span> Daily Notes 插入当日划线</li>
+          </ul>
+          <h3>模块 6 · 设置（对标 Weread）</h3>
+          <ul>
+            <li><span class="prio p0">P0</span> Vault 笔记目录、文件名模板（<code>{{title}}</code> / <code>{{author}}</code> / <code>{{source}}</code>）</li>
+            <li><span class="prio p0">P0</span> 可选按来源或书名分子文件夹；设置页实时预览最终路径</li>
+            <li><span class="prio p2">P2</span> Daily Notes 开关与日记目录</li>
+          </ul>
+          <h3>刻意不做（首期）</h3>
+          <ul>
+            <li>不破解、不把平台付费正文缓存进 Vault</li>
+            <li>不替代微信读书 / 番茄客户端的版权正文，只把阅读和笔记留在 Obsidian</li>
+            <li>不在原型阶段写 Obsidian Plugin API</li>
+          </ul>
+        </div>`;
+    }
+
+    function render() {
+      document.querySelectorAll(".tabs button").forEach((b) => {
+        b.classList.toggle("on", b.dataset.view === state.view && state.view !== "reader");
+      });
+      document.querySelectorAll(".view").forEach((v) => v.classList.remove("on"));
+      const id = "view-" + state.view;
+      document.getElementById(id).classList.add("on");
+      if (state.view === "shelf") renderShelf();
+      if (state.view === "store") renderStore();
+      if (state.view === "channels") renderChannels();
+      if (state.view === "reader") renderReader();
+      if (state.view === "settings") renderSettings();
+      if (state.view === "spec") renderSpec();
+    }
+
+    let bindUi = { id: null, tab: "qr", seed: "", ok: false };
+    let qrTimer = null;
+
+    function qrSvg(seed) {
+      const n = 21;
+      const grid = Array.from({ length: n }, () => Array(n).fill(0));
+      let h = 2166136261;
+      for (const ch of String(seed)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+      const bit = () => { h = Math.imul(h ^ (h >>> 13), 1274126177); return (h >>> 0) & 1; };
+      const finder = (ox, oy) => {
+        for (let y = 0; y < 7; y++) for (let x = 0; x < 7; x++) {
+          const edge = x === 0 || y === 0 || x === 6 || y === 6;
+          const inner = x >= 2 && x <= 4 && y >= 2 && y <= 4;
+          grid[oy + y][ox + x] = edge || inner ? 1 : 0;
+        }
+      };
+      finder(0, 0); finder(n - 7, 0); finder(0, n - 7);
+      for (let i = 8; i < n - 8; i++) { grid[6][i] = i % 2 === 0 ? 1 : 0; grid[i][6] = i % 2 === 0 ? 1 : 0; }
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        if ((x < 8 && y < 8) || (x >= n - 8 && y < 8) || (x < 8 && y >= n - 8) || x === 6 || y === 6) continue;
+        grid[y][x] = bit();
+      }
+      const cells = [];
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        if (grid[y][x]) cells.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`);
+      }
+      return `<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" aria-hidden="true">${cells.join("")}</svg>`;
+    }
+
+    function mockToken(id) {
+      const tail = Math.random().toString(16).slice(2, 8);
+      if (id === "weread") return "wr_key_" + tail;
+      return id + "_" + tail;
+    }
+
+    function openBind(id, tab) {
+      const s = SOURCES[id];
+      if (!s || !s.qrApp) return;
+      bindUi = { id, tab: tab || "qr", seed: id + "-" + Date.now(), ok: false };
+      document.getElementById("bind-modal").classList.add("on");
+      renderBindModal();
+      if (bindUi.tab === "qr") startQrWait();
+    }
+
+    function closeBind() {
+      clearTimeout(qrTimer);
+      qrTimer = null;
+      bindUi.ok = false;
+      document.getElementById("bind-modal").classList.remove("on");
+    }
+
+    function startQrWait() {
+      clearTimeout(qrTimer);
+      bindUi.ok = false;
+      qrTimer = setTimeout(() => {
+        if (!document.getElementById("bind-modal").classList.contains("on")) return;
+        if (bindUi.tab !== "qr") return;
+        bindUi.ok = true;
+        renderBindModal();
+        setTimeout(() => completeBind(bindUi.id, mockToken(bindUi.id), "qr"), 700);
+      }, 12000);
+    }
+
+    function renderBindModal() {
+      const id = bindUi.id;
+      const s = SOURCES[id];
+      if (!s) return;
+      const tab = bindUi.tab;
+      const pane = {
+        qr: `<div class="qr-pane">
+          <div class="qr-well ${bindUi.ok ? "ok" : ""}" style="--c:${s.color}">
+            ${qrSvg(bindUi.seed)}
+            <i></i>
+            <div class="qr-stamp">已扫码</div>
+          </div>
+          <p class="muted">${bindUi.ok ? "扫码成功，正在写入凭证…" : "请用 " + s.qrApp + " 扫描。也可直接点「已扫码」走通流程（原型）。"}</p>
+          <p class="muted">${s.qrHint}</p>
+          <div class="row" style="justify-content:center">
+            <button class="ghost" data-act="qr-refresh">刷新二维码</button>
+            <button class="btn" data-act="qr-done">已扫码</button>
+          </div>
+        </div>`,
+        paste: `<div class="paste-pane">
+          <p class="muted">${s.pasteHint}</p>
+          <label>${s.pasteLabel}</label>
+          <input id="bind-token" type="text" placeholder="${escapeAttr(s.pastePh)}" />
+          <label>${s.cookieLabel}</label>
+          <input id="bind-cookie" type="text" placeholder="${escapeAttr(s.cookiePh)}" />
+          <div class="row">
+            <button class="btn" data-act="bind-paste">写入并绑定</button>
+          </div>
+        </div>`,
+        web: `<div class="web-pane">
+          <p class="muted">在系统浏览器打开官方登录页。登录完成后回到这里点「我已登录」——正式插件可用 Electron 捕获 Cookie，原型直接记一次会话。</p>
+          <div class="row">
+            <a class="btn" href="${s.webLogin}" target="_blank" rel="noreferrer">打开登录页</a>
+            <button class="ghost" data-act="bind-web">我已登录</button>
+          </div>
+        </div>`
+      }[tab];
+      document.getElementById("bind-body").innerHTML = `
+        <div class="bind-head">
+          <div>
+            <h2 id="bind-title">绑定 ${s.name}</h2>
+            <p class="muted" style="margin:4px 0 0">${s.bind}</p>
+          </div>
+          <button class="ghost" data-act="close-bind">关闭</button>
+        </div>
+        <div class="bind-tabs">
+          <button class="${tab === "qr" ? "on" : ""}" data-act="bind-tab" data-tab="qr">扫码</button>
+          <button class="${tab === "paste" ? "on" : ""}" data-act="bind-tab" data-tab="paste">粘贴凭证</button>
+          <button class="${tab === "web" ? "on" : ""}" data-act="bind-tab" data-tab="web">网页登录</button>
+        </div>
+        ${pane}`;
+    }
+
+    function completeBind(id, account, method) {
+      if (!id || !SOURCES[id]) return;
+      state.channels[id].bound = true;
+      state.channels[id].account = account;
+      state.channels[id].method = method;
+      state.channels[id].lastSync = now();
+      injectMockBooks(id);
+      save();
+      closeBind();
+      toast(SOURCES[id].name + " 已绑定（" + ({ qr: "扫码", paste: "粘贴", web: "网页" }[method] || method) + "）");
+      state.view = "channels";
+      render();
+    }
+
+    function bindPaste() {
+      const token = document.getElementById("bind-token")?.value.trim();
+      const cookie = document.getElementById("bind-cookie")?.value.trim();
+      const account = token || cookie;
+      if (!account) { toast("先粘贴 API Key、用户 ID 或 Cookie"); return; }
+      completeBind(bindUi.id, account, "paste");
+    }
+    function injectMockBooks(id) {
+      const extras = {
+        fanqie: { id: "fq-2", source: "fanqie", title: "深空彼岸", author: "辰东", progress: 11, lastRead: today(), remoteId: "69833615430", chapters: ["开篇"], text: "【原型占位】同步后的书目。", highlights: [], notes: [] },
+        qidian: { id: "qd-2", source: "qidian", title: "夜的命名术", author: "会说话的肘子", progress: 8, lastRead: today(), remoteId: "1024631371", chapters: ["开篇"], text: "【原型占位】同步后的书目。", highlights: [], notes: [] },
+        weread: { id: "wr-4", source: "weread", title: "聪明的投资者", author: "本杰明·格雷厄姆", progress: 5, lastRead: today(), remoteId: "330004321", chapters: ["引言"], text: "同步到的新书。", highlights: [], notes: [] }
+      };
+      const extra = extras[id];
+      if (extra && !state.books.some((b) => b.id === extra.id)) state.books.unshift(extra);
+    }
+    function syncAll() {
+      const bound = Object.entries(state.channels).filter(([, c]) => c.bound);
+      if (!bound.length) { toast("还没有绑定任何渠道"); return; }
+      bound.forEach(([id, c]) => { c.lastSync = now(); injectMockBooks(id); });
+      save(); toast("已同步 " + bound.map(([id]) => SOURCES[id].name).join("、"));
+      state.view = "shelf"; render();
+    }
+    function importFiles(files) {
+      [...files].forEach((file) => {
+        const ext = (file.name.split(".").pop() || "").toLowerCase();
+        const title = file.name.replace(/\.[^.]+$/, "");
+        const book = {
+          id: "loc-" + Date.now() + Math.random().toString(16).slice(2, 6),
+          source: "local", title, author: "本地", progress: 0, lastRead: today(),
+          format: ext, chapters: ["全文"], text: "", highlights: [], notes: []
+        };
+        if (ext === "txt" || ext === "md") {
+          const reader = new FileReader();
+          reader.onload = () => {
+            book.text = String(reader.result || "");
+            state.books.unshift(book); save(); render();
+            toast("已导入 " + file.name);
+          };
+          reader.readAsText(file, "utf-8");
+        } else {
+          book.text = `【${ext.toUpperCase()} 占位】正式插件将解析 ${file.name}。当前只把这本书放到本地架。`;
+          state.books.unshift(book); save(); toast("已登记 " + file.name + "（暂不解析正文）");
+        }
+      });
+      document.getElementById("import-modal").classList.remove("on");
+      state.view = "shelf"; state.filter = "local"; render();
+    }
+    function today() { return new Date().toISOString().slice(0, 10); }
+    function now() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+    function markHighlights(html, highlights) {
+      let out = html;
+      (highlights || []).forEach((h) => {
+        const t = escapeHtml(h.text);
+        if (t && out.includes(t)) out = out.replace(t, `<mark class="hl">${t}</mark>`);
+      });
+      return out;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
+
+    document.body.addEventListener("click", (e) => {
+      const t = e.target.closest("[data-act]");
+      if (!t) return;
+      const act = t.dataset.act;
+      if (act === "nav") { state.view = t.dataset.view; if (state.view !== "reader") state.selectedId = null; save(); render(); }
+      if (act === "filter") { state.filter = t.dataset.id; save(); renderShelf(); }
+      if (act === "mode") { state.mode = t.dataset.id; save(); renderShelf(); }
+      if (act === "open-book") {
+        const b = state.books.find((x) => x.id === t.dataset.id);
+        state.selectedId = t.dataset.id;
+        state.view = "reader";
+        state.chapter = 0;
+        state.readerTab = b && (b.source === "local" || hasNativeText(b)) ? "native" : "embed";
+        save(); render();
+      }
+      if (act === "rtab") { state.readerTab = t.dataset.id; save(); renderReader(); }
+      if (act === "chapter") { state.chapter = Number(t.dataset.i); save(); renderReader(); }
+      if (act === "add-note") {
+        const book = state.books.find((b) => b.id === state.selectedId);
+        if (book && addBookNote(book, document.getElementById("note-input")?.value)) {
+          toast("已记入 " + vaultPath(book));
+          renderReader();
+        }
+      }
+      if (act === "del-note") {
+        const book = state.books.find((b) => b.id === state.selectedId);
+        if (book) {
+          book.notes = (book.notes || []).filter((n) => n.id !== t.dataset.nid);
+          save(); renderReader();
+        }
+      }
+      if (act === "clip-hl") {
+        const book = state.books.find((b) => b.id === state.selectedId);
+        const h = book?.highlights[Number(t.dataset.i)];
+        if (book && h && addBookNote(book, h.text, { chapter: h.chapter, from: "划线" })) {
+          toast("划线已收入统一笔记");
+          renderReader();
+        }
+      }
+      if (act === "open-import") document.getElementById("import-modal").classList.add("on");
+      if (act === "close-import") document.getElementById("import-modal").classList.remove("on");
+      if (act === "open-bind") openBind(t.dataset.id, t.dataset.tab || "qr");
+      if (act === "close-bind") closeBind();
+      if (act === "bind-tab") {
+        bindUi.tab = t.dataset.tab;
+        bindUi.ok = false;
+        if (bindUi.tab !== "qr") clearTimeout(qrTimer);
+        renderBindModal();
+        if (bindUi.tab === "qr") startQrWait();
+      }
+      if (act === "qr-refresh") {
+        bindUi.seed = bindUi.id + "-" + Date.now();
+        bindUi.ok = false;
+        renderBindModal();
+        startQrWait();
+      }
+      if (act === "qr-done") completeBind(bindUi.id, mockToken(bindUi.id), "qr");
+      if (act === "bind-paste") bindPaste();
+      if (act === "bind-web") completeBind(bindUi.id, "web_" + mockToken(bindUi.id), "web");
+      if (act === "unbind") {
+        const ch = state.channels[t.dataset.id];
+        ch.bound = false; ch.lastSync = ""; ch.account = ""; ch.method = "";
+        save(); toast("已解除 " + SOURCES[t.dataset.id].name); renderChannels();
+      }
+      if (act === "sync-all") syncAll();
+      if (act === "remove-book") {
+        state.books = state.books.filter((b) => b.id !== t.dataset.id);
+        state.view = "shelf"; state.selectedId = null; save(); toast("已移出书架"); render();
+      }
+      if (act === "add-platform") {
+        const name = document.getElementById("np-name").value.trim();
+        const url = document.getElementById("np-url").value.trim();
+        if (!name || !url) { toast("名称和网址都要填"); return; }
+        state.customPlatforms.push({ id: "c-" + Date.now(), name, url, desc: "自定义入口" });
+        save(); toast("已加入书城"); renderStore();
+      }
+      if (act === "toggle-daily") {
+        applySetting("dailyNotes", !settings().dailyNotes);
+        renderSettings();
+      }
+    });
+    document.body.addEventListener("input", (e) => {
+      const el = e.target;
+      if (!el.dataset.set) return;
+      applySetting(el.dataset.set, el.value);
+    });
+    document.body.addEventListener("change", (e) => {
+      const el = e.target;
+      if (el.id === "folder-preset" && el.value) {
+        applySetting("notesFolder", el.value);
+        const folder = document.querySelector("[data-set='notesFolder']");
+        if (folder) folder.value = el.value;
+        return;
+      }
+      if (!el.dataset.set) return;
+      applySetting(el.dataset.set, el.type === "checkbox" ? el.checked : el.value);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      document.getElementById("import-modal").classList.remove("on");
+      closeBind();
+    });
+    const drop = document.getElementById("dropzone");
+    const input = document.getElementById("file-input");
+    drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+    drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+    drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); importFiles(e.dataTransfer.files); });
+    input.addEventListener("change", () => importFiles(input.files));
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+# 依赖
+node_modules/
+
+# 构建产物（发布时用 GitHub Release 上传 main.js）
+main.js
+*.map
+
+# Obsidian 运行时：本机书架、分组、登录凭证，禁止入库
+data.json
+.hotreload
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+*.iml
+*.swp
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志与本地环境
+*.log
+npm-debug.log*
+.env
+.env.*
+
+# 测试 / 覆盖率
+coverage/
+.nyc_output/
