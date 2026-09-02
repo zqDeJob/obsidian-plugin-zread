@@ -11,6 +11,7 @@ import {
 	newId,
 	nowStr,
 	openUrl,
+	shelfProgressLabel,
 	sourceOf,
 	todayStr,
 	vaultPath,
@@ -455,6 +456,7 @@ export class ZReadView extends ItemView {
 		return `<button type="button" class="icon-book" draggable="true" data-book-id="${esc(book.id)}" data-act="open-book" data-id="${esc(book.id)}">
 			${this.miniJacket(book)}
 			<strong>${esc(book.title)}</strong>
+			<em>${esc(shelfProgressLabel(book))}</em>
 		</button>`;
 	}
 
@@ -834,6 +836,7 @@ export class ZReadView extends ItemView {
 					<strong>${esc(book.title)}</strong>
 					<em>${esc(book.author)}</em>
 					<span class="tags">${tags}</span>
+					<span class="book-progress">${esc(shelfProgressLabel(book))}</span>
 					<span class="book-read">最近阅读 ${esc(book.lastRead || "—")}</span>
 				</span>
 			</button>

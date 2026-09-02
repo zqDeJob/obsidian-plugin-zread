@@ -111,6 +111,11 @@ export function notebooksToBooks(raw: unknown): Book[] {
 		const coverRaw = String(inner.cover ?? row.cover ?? "");
 		const finished = Number(row.finishReading ?? inner.finishReading ?? 0) === 1;
 		const bookType = Number(inner.type ?? inner.bookType ?? row.bookType ?? 0);
+		const chapterTotal = Number(inner.chapterCount ?? row.chapterCount ?? 0) || 0;
+		const rawAt = Number(inner.chapterIdx ?? row.chapterIdx);
+		const chapterAt = Number.isFinite(rawAt) && rawAt >= 0
+			? rawAt
+			: (finished && chapterTotal ? chapterTotal : undefined);
 		books.push({
 			id: `weread:${bookId}`,
 			source: "weread",
@@ -125,6 +130,7 @@ export function notebooksToBooks(raw: unknown): Book[] {
 			markCount: Number(row.noteCount ?? inner.noteCount ?? 0) || 0,
 			reviewCount: Number(row.reviewCount ?? inner.reviewCount ?? 0) || 0,
 			chapters: ["在线阅读"],
+			...(chapterTotal > 0 && chapterAt != null ? { chapterAt, chapterTotal } : {}),
 			text: "",
 			highlights: [],
 			notes: [],

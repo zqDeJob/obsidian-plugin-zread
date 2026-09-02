@@ -49,6 +49,8 @@ export interface Book {
 	remoteId?: string;
 	format?: string;
 	chapters: string[];
+	chapterAt?: number;
+	chapterTotal?: number;
 	text: string;
 	highlights: Highlight[];
 	notes: Note[];
@@ -263,6 +265,17 @@ export function openUrl(source: string, book?: Book): string {
 export function hasNativeText(book: Book): boolean {
 	const t = book.text || "";
 	return Boolean(t) && !t.includes("【原型占位】") && !t.startsWith("【");
+}
+
+export function shelfProgressLabel(book: { progress: number; chapterAt?: number; chapterTotal?: number }): string {
+	const total = Number(book.chapterTotal) || 0;
+	if (total > 0) {
+		const at = Math.max(0, Number(book.chapterAt) || 0);
+		return `${Math.min(at, total)} / ${total} 章`;
+	}
+	if (book.progress >= 100) return "已读完";
+	if (book.progress > 0) return `${book.progress}%`;
+	return "未读";
 }
 
 /** 原型演示书 id。真实插件不再注入，加载时也会清掉已写入的这些记录。 */

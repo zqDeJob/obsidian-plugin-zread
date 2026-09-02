@@ -151,6 +151,15 @@ function listOf(raw: unknown, keys: string[]): unknown[] {
 	return [];
 }
 
+/** 官网进度接口里 index 经常是字符串 "0"，真实章节在 read_progress。 */
+export function fanqieReadChapter(prog: Record<string, unknown>): number {
+	const fromRead = Number(prog.read_progress);
+	if (Number.isFinite(fromRead) && fromRead > 0) return fromRead;
+	const fromIndex = Number(prog.index);
+	if (Number.isFinite(fromIndex) && fromIndex > 0) return fromIndex;
+	return 0;
+}
+
 function coverOf(row: Record<string, unknown>): string {
 	const url = String(row.thumb_url ?? row.cover ?? "").trim();
 	if (/^https?:\/\//i.test(url)) return url;
@@ -190,8 +199,8 @@ export function fanqieToBooks(input: FanqieInputs): Book[] {
 		const detail = detailById.get(bookId) ?? {};
 		const prog = progressById.get(bookId) ?? {};
 		const serial = Number(detail.serial_count ?? 0) || 0;
-		const index = Number(prog.index ?? -1);
-		const progressPct = serial > 0 && index >= 0 ? Math.min(100, Math.round((index / serial) * 100)) : 0;
+		const index = fanqieReadChapter(prog);
+		const progressPct = serial > 0 && index > 0 ? Math.min(100, Math.round((index / serial) * 100)) : 0;
 		const lastSec = Number(prog.read_timestamp ?? row.last_operate_time ?? 0) || 0;
 		const title = String(detail.book_name ?? detail.title ?? "").trim() || `番茄书 ${bookId}`;
 		const group = String(row.group_name ?? "").trim();
@@ -208,6 +217,7 @@ export function fanqieToBooks(input: FanqieInputs): Book[] {
 			cover: coverOf(detail),
 			kind: "book",
 			chapters: ["在线阅读"],
+			...(serial > 0 || index > 0 ? { chapterAt: index, ...(serial > 0 ? { chapterTotal: serial } : {}) } : {}),
 			text: "",
 			highlights: [],
 			notes: [],

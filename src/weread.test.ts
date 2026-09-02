@@ -38,6 +38,27 @@ describe("weread mapping", () => {
 		assert.equal(books[0]?.reviewCount, 2);
 	});
 
+	it("keeps chapter counts when the notebook row has them, otherwise only percent", () => {
+		const withChapters = notebooksToBooks({
+			books: [{
+				progress: 12,
+				chapterIdx: 65,
+				chapterCount: 900,
+				book: { bookId: "1", title: "A", author: "a" },
+			}],
+		})[0];
+		assert.equal(withChapters?.chapterAt, 65);
+		assert.equal(withChapters?.chapterTotal, 900);
+		const percentOnly = notebooksToBooks({
+			books: [{
+				progress: 65,
+				book: { bookId: "2", title: "B", author: "b" },
+			}],
+		})[0];
+		assert.equal(percentOnly?.progress, 65);
+		assert.equal(percentOnly?.chapterTotal, undefined);
+	});
+
 	it("encodes weread reader urls instead of raw bookId", () => {
 		assert.equal(wereadReaderUrl("651358"), "https://weread.qq.com/web/reader/9f832d8059f05e9f8657f05");
 		assert.match(wereadReaderUrl("37335991"), /^https:\/\/weread\.qq\.com\/web\/reader\//);

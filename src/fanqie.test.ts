@@ -48,14 +48,14 @@ describe("fanqie mapping", () => {
 						book_name: "大奉打更人",
 						author: "卖报小郎君",
 						thumb_url: "https://p6-novel.byteimg.com/cover.jpg",
-						serial_count: 1200,
+						serial_count: "1200",
 						creation_status: "1",
 					}],
 				},
 			},
 			progress: {
 				code: 0,
-				data: [{ book_id: "69833615430", index: 120, read_timestamp: 1756627200 }],
+				data: [{ book_id: "69833615430", index: "0", read_progress: 120, read_timestamp: 1756627200 }],
 			},
 		});
 		assert.equal(books.length, 1);
@@ -68,8 +68,21 @@ describe("fanqie mapping", () => {
 		assert.equal(books[0]?.cover, "https://p6-novel.byteimg.com/cover.jpg");
 		assert.equal(books[0]?.lastRead, "2025-08-31");
 		assert.equal(books[0]?.progress, 10);
+		assert.equal(books[0]?.chapterAt, 120);
+		assert.equal(books[0]?.chapterTotal, 1200);
 		assert.equal(books[0]?.kind, "book");
 		assert.equal(books[0]?.group, "在读");
+	});
+
+	it("uses read_progress when index is the string 0 that the official API actually returns", () => {
+		const books = fanqieToBooks({
+			shelf: { data: { book_shelf_info: [{ book_id: "1" }] } },
+			details: { data: { detail_list: [{ book_id: "1", book_name: "甲", serial_count: "900" }] } },
+			progress: { data: [{ book_id: "1", index: "0", read_progress: 65, item_id: "222" }] },
+		});
+		assert.equal(books[0]?.chapterAt, 65);
+		assert.equal(books[0]?.chapterTotal, 900);
+		assert.equal(books[0]?.progress, 7);
 	});
 
 	it("skips shelf rows without book_id and still emits a stub title when detail is missing", () => {
